@@ -70,7 +70,7 @@ runs:
           ID=mac
           DEFAULT_TARGET=MacOS
         fi
-        
+
         TARGET=${{ inputs.target }}
         if [ "$TARGET" = "" ]; then
           TARGET=$DEFAULT_TARGET
@@ -85,7 +85,7 @@ runs:
         elif [ "$TARGET" = "MacOS" ]; then
           OUTPUT_ID=mac
         fi
-        
+
         echo "id=$ID" >> $GITHUB_OUTPUT
         echo "target=$TARGET" >> $GITHUB_OUTPUT
         echo "target_id=$OUTPUT_ID" >> $GITHUB_OUTPUT
@@ -121,7 +121,16 @@ runs:
       if: inputs.bindings != 'geode-sdk/bindings' || inputs.bindings-ref != ''
       shell: bash
       run: echo "GEODE_BINDINGS_REPO_PATH=$GITHUB_WORKSPACE/bindings-repo" >> $GITHUB_ENV
-        
+
+    - name: Fix Ubuntu weirdness
+      shell: bash
+      run: |
+        sudo apt install ninja-build &&
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test &&
+        sudo apt-get update &&
+        sudo apt-get install --only-upgrade libstdc++6
+      if: steps.platform.outputs.id == 'linux' && (steps.platform.outputs.target_id == 'android32' || stepts.platform.outputs.target_id == 'android64')
+
     - name: Download CLI
       uses: robinraju/release-downloader@v1.8
       with:
@@ -136,7 +145,7 @@ runs:
 
     - run: echo "${{ github.action_path }}" >> $GITHUB_PATH
       shell: bash
-    
+
     - name: Setup CLI
       shell: bash
       run: |
@@ -152,7 +161,7 @@ runs:
         geode profile add --name GithubActions "$CLI_PROFILE"
 
         geode sdk install "${{ github.action_path }}/geode-sdk-clone"
-        
+
         # silly github actions wont refresh the env
         export GEODE_SDK="${{ github.action_path }}/geode-sdk-clone"
         echo "GEODE_SDK=$GEODE_SDK" >> $GITHUB_ENV
@@ -174,7 +183,7 @@ runs:
       shell: bash
       run: |
         mkdir -p $HOME/.cache
-        
+
         cd "${{ inputs.path }}"
         if [ ${{ steps.platform.outputs.id }} = "win" ]; then
           CMAKE_EXTRA_ARGS="-T host=x64 -A win32"
@@ -189,7 +198,7 @@ runs:
         cmake --build build --config ${{ inputs.build-config }} ${{ inputs.build-args }}
 
         mkdir "${{ github.action_path }}/output"
-        
+
         for file in $(find ./build -name *.geode); do
           cp $file "${{ github.action_path }}/output"
         done
@@ -203,7 +212,7 @@ runs:
           OUTPUT_DIR=$(realpath "$OUTPUT_DIR")
         fi
         echo "output=$OUTPUT_DIR" >> $GITHUB_OUTPUT
-    
+
     - name: Upload artifacts
       if: ${{ inputs.combine }}
       uses: actions/upload-artifact@v3
